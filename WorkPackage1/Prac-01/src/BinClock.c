@@ -5,8 +5,8 @@
  * Further Modified By: Mark Njoroge 
  *
  * 
- * <STUDNUM_1> <STUDNUM_2>
- * Date
+ * <GVNVER009> <MHRSHI021>
+ *2021/08/18 
 */
 
 #include <signal.h> //for catching signals
@@ -32,6 +32,8 @@ void CleanUp(int sig){
 
 	//Set LED to low then input mode
 	//Logic here
+	digitalWrite (LED, LOW);
+	pinMode(LED,INPUT);
 
 
 	for (int j=0; j < sizeof(BTNS)/sizeof(BTNS[0]); j++) {
@@ -56,6 +58,7 @@ void initGPIO(void){
 	
 	//Set up the LED
 	//Write your Logic here
+	pinMode (LED, OUTPUT) ;
 
 	
 	printf("LED and RTC done\n");
@@ -68,7 +71,8 @@ void initGPIO(void){
 	
 	//Attach interrupts to Buttons
 	//Write your logic here
-	
+	wiringPiISR(5,INT_EDGE_RISING,&hourInc);
+	wiringPiISR(30,INT_EDGE_RISING,&minInc);
 
 
 	printf("BTNS done\n");
@@ -94,10 +98,17 @@ int main(void){
 	for (;;){
 		//Fetch the time from the RTC
 		//Write your logic here
-		
+		hours =hexCompensation( wiringPiI2CReadReg8 (RTC,HOUR_REGISTER )) ;
+		mins =hexCompensation( wiringPiI2CReadReg8 (RTC, MIN_REGISTER)) ;
+		secs =hexCompensation( wiringPiI2CReadReg8 (RTC, SEC_REGISTER)) ;
 		//Toggle Seconds LED
 		//Write your logic here
-		
+
+		if(digitalRead(LED)==0)
+		{ digitalWrite (LED, HIGH);}
+		else
+		{digitalWrite (LED, LOW);}
+
 		// Print out the time we have stored on our RTC
 		printf("The current time is: %d:%d:%d\n", hours, mins, secs);
 
@@ -191,6 +202,12 @@ void hourInc(void){
 		//Fetch RTC Time
 		//Increase hours by 1, ensuring not to overflow
 		//Write hours back to the RTC
+		int value =hexCompensation( wiringPiI2CReadReg8(RTC, HOUR_REGISTER));
+		value = value +1;
+		if (value==24)
+		{value =0;}
+		value = decCompensation(value);
+		wiringPiI2CWriteReg8(RTC, HOUR_REGISTER, value) ;
 	}
 	lastInterruptTime = interruptTime;
 }
@@ -209,6 +226,15 @@ void minInc(void){
 		//Fetch RTC Time
 		//Increase minutes by 1, ensuring not to overflow
 		//Write minutes back to the RTC
+		int value =hexCompensation( wiringPiI2CReadReg8(RTC, MIN_REGISTER));
+                value = value +1;
+                if (value==60)
+                {value =0; 
+		hourInc(); }
+
+                value = decCompensation(value);
+                wiringPiI2CWriteReg8(RTC, MIN_REGISTER, value) ;
+
 	}
 	lastInterruptTime = interruptTime;
 }
